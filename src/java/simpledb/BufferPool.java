@@ -1,7 +1,7 @@
 package simpledb;
 
 import java.io.*;
-
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -25,6 +25,10 @@ public class BufferPool {
     other classes. BufferPool should use the numPages argument to the
     constructor instead. */
     public static final int DEFAULT_PAGES = 50;
+    
+    public final int PAGES_NUM;
+    
+    private HashMap<PageId, Page> pid2pages;
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -33,6 +37,8 @@ public class BufferPool {
      */
     public BufferPool(int numPages) {
         // some code goes here
+    	PAGES_NUM = numPages;
+    	pid2pages = new HashMap<>(PAGES_NUM);
     }
     
     public static int getPageSize() {
@@ -67,7 +73,18 @@ public class BufferPool {
     public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
         // some code goes here
-        return null;
+    	if(pid2pages.containsKey(pid)) {
+    		return pid2pages.get(pid);
+    	}else {
+    		HeapFile table = (HeapFile)Database.getCatalog().getDatabaseFile(pid.getTableId());
+    		HeapPage newPage = (HeapPage)table.readPage(pid);
+    		//暂时没有调度算法
+    		if(pid2pages.size()>= PAGES_NUM) {
+    			throw new DbException("页面溢出。");
+    		}
+    		pid2pages.put(pid, newPage);
+    		return newPage;
+    	}
     }
 
     /**

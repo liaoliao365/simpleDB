@@ -2,6 +2,7 @@ package simpledb;
 
 import java.util.*;
 
+
 /**
  * SeqScan is an implementation of a sequential scan access method that reads
  * each tuple of a table in no particular order (e.g., as they are laid out on
@@ -10,7 +11,11 @@ import java.util.*;
 public class SeqScan implements OpIterator {
 
     private static final long serialVersionUID = 1L;
-
+    private String alias;
+    private TransactionId tid;
+    private int tableid;
+    private DbFileIterator tupleIterator;
+    
     /**
      * Creates a sequential scan over the specified table as a part of the
      * specified transaction.
@@ -29,6 +34,10 @@ public class SeqScan implements OpIterator {
      */
     public SeqScan(TransactionId tid, int tableid, String tableAlias) {
         // some code goes here
+    	this.tid = tid;
+    	this.tableid = tableid;
+    	this.alias = tableAlias;
+    	this.tupleIterator = Database.getCatalog().getDatabaseFile(tableid).iterator(tid);
     }
 
     /**
@@ -37,7 +46,7 @@ public class SeqScan implements OpIterator {
      *       be the actual name of the table in the catalog of the database
      * */
     public String getTableName() {
-        return null;
+        return Database.getCatalog().getTableName(this.tableid);
     }
 
     /**
@@ -46,7 +55,7 @@ public class SeqScan implements OpIterator {
     public String getAlias()
     {
         // some code goes here
-        return null;
+        return this.alias;
     }
 
     /**
@@ -63,6 +72,8 @@ public class SeqScan implements OpIterator {
      */
     public void reset(int tableid, String tableAlias) {
         // some code goes here
+    	this.tableid = tableid;
+    	this.alias = tableAlias;
     }
 
     public SeqScan(TransactionId tid, int tableId) {
@@ -71,6 +82,7 @@ public class SeqScan implements OpIterator {
 
     public void open() throws DbException, TransactionAbortedException {
         // some code goes here
+    	tupleIterator.open();
     }
 
     /**
@@ -82,29 +94,43 @@ public class SeqScan implements OpIterator {
      *
      * @return the TupleDesc with field names from the underlying HeapFile,
      *         prefixed with the tableAlias string from the constructor.
+     *         这样有什么用，在join的时候有什么好处？
      */
     public TupleDesc getTupleDesc() {
         // some code goes here
-        return null;
+    	TupleDesc desc = Database.getCatalog().getTupleDesc(this.tableid);
+    	int num = desc.numFields();
+    	Type[] types = new Type[num];
+    	String[] names = new String[num];
+    	for(int i=0; i<num; i++) {
+    		types[i] = desc.getFieldType(i);
+    		String prefix = this.alias == null ? "null.":this.alias+".";
+    		String fieldname = desc.getFieldName(i);
+    		if (fieldname ==null) fieldname = "null";
+    		names[i] = prefix + fieldname;
+    	}
+        return new TupleDesc(types, names);
     }
 
     public boolean hasNext() throws TransactionAbortedException, DbException {
         // some code goes here
-        return false;
+        return tupleIterator.hasNext();
     }
 
     public Tuple next() throws NoSuchElementException,
             TransactionAbortedException, DbException {
         // some code goes here
-        return null;
+        return tupleIterator.next();
     }
 
     public void close() {
         // some code goes here
+    	tupleIterator.close();
     }
 
     public void rewind() throws DbException, NoSuchElementException,
             TransactionAbortedException {
         // some code goes here
+    	tupleIterator.rewind();
     }
 }

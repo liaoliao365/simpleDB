@@ -1,6 +1,11 @@
 package simpledb;
 
 import java.util.*;
+
+//import com.sun.tools.classfile.TypeAnnotation.Position;
+
+//import jdk.jfr.events.ErrorThrownEvent;
+
 import java.io.*;
 
 /**
@@ -67,8 +72,14 @@ public class HeapPage implements Page {
     */
     private int getNumTuples() {        
         // some code goes here
-        return 0;
-
+        if (numSlots != 0) {
+        	return numSlots;
+        }
+        //We compute the number of bits in a page (by mulitplying page size by 8), 
+        //and divide this quantity by the number of bits in a tuple 
+        //(including this extra header bit) to get the number of tuples per page.
+        //这几个size的单位都是bytes
+        return (BufferPool.getPageSize()*8)/(td.getSize()*8+1);
     }
 
     /**
@@ -76,9 +87,10 @@ public class HeapPage implements Page {
      * @return the number of bytes in the header of a page in a HeapFile with each tuple occupying tupleSize bytes
      */
     private int getHeaderSize() {        
-        
         // some code goes here
-        return 0;
+    	//？？？？？
+    	// 会不会有getNumTuples里面刚好除尽，但是个数不是8的倍数，这样NumTuples应该要减去1？？？？
+        return (int)Math.ceil(getNumTuples()/8.0);
                  
     }
     
@@ -112,7 +124,8 @@ public class HeapPage implements Page {
      */
     public HeapPageId getId() {
     // some code goes here
-    throw new UnsupportedOperationException("implement this");
+    //throw new UnsupportedOperationException("implement this");
+    	return pid;
     }
 
     /**
@@ -282,15 +295,22 @@ public class HeapPage implements Page {
      */
     public int getNumEmptySlots() {
         // some code goes here
-        return 0;
+    	int  ans = 0, tuplesnum = getNumTuples();
+    	for(int i = 0; i < tuplesnum; i++) {
+    		if(!isSlotUsed(i)) ans++;
+    	}
+        return ans;
     }
-
+    
     /**
      * Returns true if associated slot on this page is filled.
      */
     public boolean isSlotUsed(int i) {
         // some code goes here
-        return false;
+    	byte b = header[i/8];
+    	int pos = i%8;
+    	//return ((1 << pos) & b) > 0;
+    	return (byte) (b << (7 - pos)) < 0;
     }
 
     /**
@@ -307,7 +327,30 @@ public class HeapPage implements Page {
      */
     public Iterator<Tuple> iterator() {
         // some code goes here
-        return null;
+        return new UsedTupleIterator();
+    }
+    
+    private class UsedTupleIterator implements Iterator<Tuple>{
+    	int i = 0;
+    	int index = 0;
+    	int usedtuplesnum = getNumTuples() - getNumEmptySlots();
+    	
+    	@Override
+    	public boolean hasNext() {
+    		//return index < getNumTuples() && i < usedtuplesnum;
+    		return  i < usedtuplesnum;
+    	}
+    	
+    	@Override
+    	public Tuple next() {
+    		if(!hasNext()) {
+    			throw new NoSuchElementException();
+    		}
+    		for(; !isSlotUsed(index); index++) {
+    		}
+    		i++;
+    		return tuples[index++];
+    	}
     }
 
 }
